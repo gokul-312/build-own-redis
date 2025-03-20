@@ -24,12 +24,15 @@ class YourRedisServer
           client.gets  # Consume the \r\n after the argument
         end
         command = args.shift
+        print args
         if command.downcase == "ping"
-          response = "+PONG\r\n"
+          response = "PONG"
+        elsif command.downcase == "echo"
+          response = args.join(' ')
         else
-          response = "+ERR-command not found\r\n"
+          response = "ERR-command not found"
         end
-        client.puts response
+      client.puts "+#{response}\r\n"
         client.close
       end
     end
