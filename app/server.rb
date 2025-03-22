@@ -1,4 +1,5 @@
 require "socket"
+require_relative 'data_store'
 
 class YourRedisServer
   def initialize(port)
@@ -14,10 +15,12 @@ class YourRedisServer
     @db = DataStore.new
     puts "Done."
 
+
     puts "Listening for connections..."
     # Uncomment this block to pass the first stage
     server = TCPServer.new(@port)
     loop do
+
       Thread.start(server.accept) do |client|
         puts "Processing a request..."
         raw_request = []
@@ -37,6 +40,7 @@ class YourRedisServer
         client.puts "+#{response}\r\n"
         client.close
         puts "Request closed."
+        puts "Listening for connections..."
       end
     end
   end
@@ -58,22 +62,6 @@ class YourRedisServer
     else
       "ERR-command not found"
     end
-  end
-end
-
-class DataStore
-  attr_accessor :store
-
-  def initialize
-    @store = {}
-  end
-
-  def set(key, value)
-    store[key] = value
-  end
-
-  def get(key)
-    store[key] || "Key Does Not Exists!!"
   end
 end
 
