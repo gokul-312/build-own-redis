@@ -2,6 +2,8 @@ require "socket"
 require_relative 'data_store'
 
 class YourRedisServer
+  BACKUP_COMMANDS = ['set', 'expire', 'expireat']
+
   def initialize(port)
     @port = port
   end
@@ -15,25 +17,25 @@ class YourRedisServer
     @db = DataStore.new
     puts "Done."
 
-
+    @backup_file = File.open('./backup.aof', 'w')
     puts "Listening for connections..."
+
     # Uncomment this block to pass the first stage
     server = TCPServer.new(@port)
     loop do
 
       Thread.start(server.accept) do |client|
-        puts "Processing a request..."
-        raw_request = []
-        raw_request << client.gets
-        num_args = raw_request.first.strip[1..-1].to_i
+        raw_request = ''
+        raw_request += client.gets
+        num_args = raw_request.strip[1..-1].to_i
         args = []
         num_args.times do
           size = client.gets.strip[1..-1].to_i  # Read the size of each argument
-          arg = client.read(size)  # Read the argument itself
+          arg = client.read(size) 
+          # Read the argument itself
           args << arg
           client.gets  # Consume the \r\n after the argument
         end
-
         print "processing_command #{args.inspect}\n"
         response = process_cmd(args)
 
@@ -43,9 +45,11 @@ class YourRedisServer
         puts "Listening for connections..."
       end
     end
+    @backup.close
   end
 
   def process_cmd(raw_cmd)
+    backup_commands(raw_cmd)
     cmd = raw_cmd.shift
     args = raw_cmd
 
@@ -59,9 +63,21 @@ class YourRedisServer
       "OK"
     when "get"
       @db.get(args[0])
+    when "expire"
+      @db.set_expiry(args[0], seconds: args[1])
+    when "expireat"
+      @db.set_expiry(args[0], expire_at: args[1])
+    when "ttl"
+      @db.ttl(args[0])
     else
       "ERR-command not found"
     end
+  end
+
+  def backup(raw_cmd)
+    return unless BACKUP_COMMANDS.include? raw_cmd[0]
+    
+    @backup_file.write(raw_cmd.join(' ') + "\n")
   end
 end
 

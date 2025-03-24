@@ -8,39 +8,47 @@ class DataStore
   end
 
   def set(key, value)
-    store[key] = { value: value, modified_at: Time.now.utc + EXPIRE_KEY_IN_SEC }
+    store[key] = { value: value }
   end
 
   def get(key)
     val = value(key)
     return unless val
 
-    delete(key) && return if expired?(key)
+    delete(key) && return if expired?(expire_at(key))
 
     val
+  end
+
+  def ttl(key)
+    return unless (val = store[key])
+
+    val[:expire_at] - Time.now.to_i
+  end
+
+  def set_expiry(key, seconds: nil, expire_at: nil)
+    return "-False-Key Does Not Exists" unless store.key? key
+
+
+    store[key][:expire_at] = expire_at || (Time.now.to_i + seconds.to_i)
+    "OK"
   end
 
   def value(key)
     store.dig(key, :value)
   end
 
-  def modified_at(key)
-    store.dig(key, :modified_at)
+  def expire_at(key)
+    store.dig(key, :expire_at)
   end
 
-  def expired?(key)
-    modified_at(key).past?
+  def expired?(expire_at)
+    return false if expire_at.nil?
+
+    expire_at < Time.now.to_i
   end
 
   def delete(key)
     store.delete key
-  end
-end
-
-
-# including past method for ruby/time class
-class Time 
-  def past?
-    self < Time.now.utc
   end
 end
