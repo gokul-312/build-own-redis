@@ -9,13 +9,24 @@ class YourRedisServer
   end
 
   def start
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    puts("Logs from your program will appear here!")
-    
-    # initialize data store
+    # initialize data store---------------
     puts "initializing data store..."
     @db = DataStore.new
     puts "Done."
+    # ------------------------------------
+
+    # restore data-----
+    backup_file = File.open('./backup.aof', 'r')
+    backup_file.each_line do |line|
+      process_cmd(line.strip.split(' '))
+      print('.')
+    end
+    backup_file.close
+    # -----------------
+
+
+    # You can use print statements as follows for debugging, they'll be visible when running tests.
+    puts("Logs from your program will appear here!")
 
     @backup_file = File.open('./backup.aof', 'w')
     puts "Listening for connections..."
@@ -36,6 +47,8 @@ class YourRedisServer
           args << arg
           client.gets  # Consume the \r\n after the argument
         end
+        
+        backup_commands(args)
         print "processing_command #{args.inspect}\n"
         response = process_cmd(args)
 
@@ -49,7 +62,6 @@ class YourRedisServer
   end
 
   def process_cmd(raw_cmd)
-    backup_commands(raw_cmd)
     cmd = raw_cmd.shift
     args = raw_cmd
 
@@ -74,10 +86,17 @@ class YourRedisServer
     end
   end
 
-  def backup(raw_cmd)
+  def backup_commands(raw_cmd)
     return unless BACKUP_COMMANDS.include? raw_cmd[0]
     
+    raw_cmd = get_expireat_command(raw_cmd) if raw_cmd[0] == 'expire'
     @backup_file.write(raw_cmd.join(' ') + "\n")
+  end
+
+  def get_expireat_command(raw_cmd)
+    raw_cmd[2] = (Time.now.to_i + raw_cmd[2].to_i).to_s
+    raw_cmd[0] = 'expireat'
+    raw_cmd
   end
 end
 

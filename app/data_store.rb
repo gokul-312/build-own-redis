@@ -39,7 +39,7 @@ class DataStore
   end
 
   def expire_at(key)
-    store.dig(key, :expire_at)
+    store.dig(key, :expire_at).to_i
   end
 
   def expired?(expire_at)
