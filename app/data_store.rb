@@ -21,31 +21,33 @@ class DataStore
   end
 
   def ttl(key)
-    return unless (val = store[key])
+    return "No Expiry" unless (val = expire_at(key))
 
-    val[:expire_at] - Time.now.to_i
+    val - Time.now.to_i
   end
 
   def set_expiry(key, seconds: nil, expire_at: nil)
-    return "-False-Key Does Not Exists" unless store.key? key
+    return "--Key Does Not Exists" unless store.key? key
 
 
     store[key][:expire_at] = expire_at || (Time.now.to_i + seconds.to_i)
     "OK"
   end
 
+  private
+
   def value(key)
     store.dig(key, :value)
   end
 
   def expire_at(key)
-    store.dig(key, :expire_at).to_i
+    store.dig(key, :expire_at)
   end
 
   def expired?(expire_at)
     return false if expire_at.nil?
 
-    expire_at < Time.now.to_i
+    expire_at.to_i < Time.now.to_i
   end
 
   def delete(key)
