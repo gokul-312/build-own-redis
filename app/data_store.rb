@@ -5,10 +5,11 @@ class DataStore
 
   def initialize
     @store = {}
+    @lock = Mutex.new
   end
 
   def set(key, value)
-    store[key] = { value: value }
+    concurrent_hash { store[key] = { value: value } }
   end
 
   def get(key)
@@ -23,7 +24,7 @@ class DataStore
   def ttl(key)
     return "No Expiry" unless (val = expire_at(key))
 
-    val - Time.now.to_i
+    val.to_i - Time.now.to_i
   end
 
   def set_expiry(key, seconds: nil, expire_at: nil)
@@ -37,11 +38,11 @@ class DataStore
   private
 
   def value(key)
-    store.dig(key, :value)
+    concurrent_hash { store.dig(key, :value) }
   end
 
   def expire_at(key)
-    store.dig(key, :expire_at)
+    concurrent_hash { store.dig(key, :expire_at) }
   end
 
   def expired?(expire_at)
@@ -51,6 +52,10 @@ class DataStore
   end
 
   def delete(key)
-    store.delete key
+    concurrent_hash { store.delete(key) }
+  end
+
+  def concurrent_hash 
+    @lock.synchronize { yield }
   end
 end

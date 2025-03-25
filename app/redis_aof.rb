@@ -20,11 +20,12 @@ class RedisAOF
 
   def replay_commands
     puts "restoring data..."
-    backup_file = File.open(AOF_FILE, 'r')
+    backup_file = File.open(AOF_FILE, 'w+')
     backup_file.each_line do |line|
       process_cmd(line.strip.split(' '))
       print('.')
     end
+    backup_file.truncate(0)
     backup_file.close
     puts "Done."
   end
